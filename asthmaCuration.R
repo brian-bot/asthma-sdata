@@ -1,10 +1,6 @@
 require(synapseClient)
 synapseLogin()
 
-## VARIABLES TO BE USED ACROSS TABLES
-theseZips <- c("036", "692", "878", "059", "790", "879", "063", "821", "884", "102", "823", "890", "203", "830", "893", "556", "831")
-outputProjId <- "syn8361748"
-
 ## x IS EXPECTED TO BE A CHARACTER VECTOR TO BE CLEANED UP
 cleanString <- function(x){
   gsub('[', '', gsub(']', '', gsub('"', '', x, fixed=T), fixed=T), fixed=T)
@@ -178,7 +174,15 @@ for(i in 1:nrow(wptmp)){
     wp$side_effects[tmpIdx] <- max(wp$side_effects[tmpIdx], na.rm = TRUE)
   }
 }
+## GET RID OF ANY SPECIFIC DATES DURING THAT WEEK
 wp$day <- NULL
+wp$oral_steroids_when <- NULL
+wp$prednisone_when <- NULL
+wp$er_when <- NULL
+wp$admitted_when <- NULL
+wp$limitations_days <- NULL
+wp$missed_work_days <- NULL
+wp$admitted_end <- NULL
 wp <- wp[-idx, ]
 weeklyPrompt$data <- wp
 rm(wp, idx, i, tmpIdx, wptmp)
@@ -193,7 +197,6 @@ ah <- ah[ order(ah$healthCode, ah$createdOn), ]
 ah <- ah[ -which(duplicated(ah[, c("healthCode")])), ]
 asthmaHistory$data <- ah
 rm(ah)
-## IS age_when_diagnosed OK?
 
 #####
 ## Asthma Medication
@@ -246,13 +249,13 @@ for(cc in setdiff(names(mh2$data), names(mh1$data))){
 }
 mh <- rbind(mh1$data, mh2$data)
 mh$other_lung_disease_other <- NULL
+mh$dementia <- NULL
 ## KEEP FIRST SURVEY
 mh <- mh[ order(mh$healthCode, mh$createdOn), ]
 mh <- mh[ -which(duplicated(mh[, c("healthCode")])), ]
 medicalHistory <- list(data=mh,
                        fhCols=NULL)
 rm(mh1, mh2, mh, cc)
-## CHECK THESE WITH GOVERNANCE TEAM
 
 #####
 ## About You
@@ -270,7 +273,6 @@ ay <- ay[ -which(duplicated(ay[, c("healthCode")])), ]
 aboutYou <- list(data=ay,
                  fhCols=NULL)
 rm(ay1, ay2, ay, cc)
-## CHECK THESE WITH GOVERNANCE TEAM
 
 #####
 ## EQ-5D
@@ -296,6 +298,14 @@ dd$NonIdentifiableDemographics.json.patientCurrentAge <- NULL
 dd$NonIdentifiableDemographics.json.patientWakeUpTime <- NULL
 dd$NonIdentifiableDemographics.json.patientGoSleepTime <- NULL
 dd$NonIdentifiableDemographics.json.item <- NULL
+## CLEAN UP WEIGHT - RULES AS PER DISCUSSION WITH GOVERNANCE TEAM
+dd$weightPounds[ which(dd$weightPounds < 50) ] <- NA
+dd$weightPounds[ which(dd$weightPounds < 80) ] <- 79
+dd$weightPounds[ which(dd$weightPounds > 350) ] <- 351
+## CLEAN UP HEIGHT - RULES AS PER DISCUSSION WITH GOVERNANCE TEAM
+dd$heightInches[ which(dd$heightInches < 30) ] <- NA
+dd$heightInches[ which(dd$heightInches < 60) ] <- 59
+dd$heightInches[ which(dd$heightInches > 78) ] <- 79
 ## KEEP FIRST SURVEY
 dd <- dd[ order(dd$healthCode, dd$createdOn), ]
 dd <- dd[ -which(duplicated(dd[, c("healthCode")])), ]
@@ -308,6 +318,15 @@ rm(dd)
 #####
 milestone <- cleanTable("syn4927134")
 mm <- milestone$data
+## CLEAN UP HEIGHT AND WEIGHT AS BEFORE
+## CLEAN UP WEIGHT - RULES AS PER DISCUSSION WITH GOVERNANCE TEAM
+mm$weight[ which(mm$weight < 50) ] <- NA
+mm$weight[ which(mm$weight < 80) ] <- 79
+mm$weight[ which(mm$weight > 350) ] <- 351
+## CLEAN UP HEIGHT - RULES AS PER DISCUSSION WITH GOVERNANCE TEAM
+mm$height[ which(mm$height < 30) ] <- NA
+mm$height[ which(mm$height < 60) ] <- 59
+mm$height[ which(mm$height > 78) ] <- 79
 ## KEEP FIRST SURVEY
 mm <- mm[ order(mm$healthCode, mm$createdOn), ]
 mm <- mm[ -which(duplicated(mm[, c("healthCode")])), ]
@@ -315,37 +334,11 @@ milestone$data <- mm
 rm(mm)
 
 #####
-## Air Quality Report
-#####
-aq1 <- cleanTable("syn3420240")
-aq2 <- cleanTable("syn4214143")
-aq3 <- cleanTable("syn5607749")
-aq4 <- cleanTable("syn5968321")
-for(cc in setdiff(names(aq4$data), names(aq1$data))){
-  aq1$data[[cc]] <- NA
-}
-for(cc in setdiff(names(aq4$data), names(aq2$data))){
-  aq2$data[[cc]] <- NA
-}
-for(cc in setdiff(names(aq4$data), names(aq3$data))){
-  aq3$data[[cc]] <- NA
-}
-aq <- rbind(aq1$data, aq2$data, aq3$data, aq4$data)
-aq$aqiResponse.json.reporting_area <- NULL
-aq$aqiResponse.json.state_code <- NULL
-aq$latlong.json <- NULL
-aq$pollen.json <- NULL
-aq$resourceparams.json <- NULL
-aq$mapOverlay.png <- NULL
-
-airQualityReport <- list(data=aq,
-                         fhCols=c("aqiResponse.json.reports", "breezometer"))
-rm(aq1, aq2, aq3, aq4, aq, cc)
-## SHOULD LEARN THE DIFFERENCE BETWEEN THE AQI AND BREEZOMETER FILES
-
 ## LOG IN AS BRIDGE EXPORTER TO UPLOAD TABLES WITH FILE HANDLES OWNED BY THAT USER
+#####
+outputProjId <- "syn8361748"
+
 storeThese <- list('About You Survey' = aboutYou,
-                   'Air Quality Reports' = airQualityReport,
                    'Asthma History Survey' = asthmaHistory,
                    'Asthma Medication Survey' = asthmaMedication,
                    'Daily Prompt Survey' = dailyPrompt,
