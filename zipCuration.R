@@ -11,11 +11,14 @@ zipFile <- synGet("syn9861625")
 zf <- read.delim(getFileLocation(zipFile), stringsAsFactors = FALSE, check.names=FALSE)
 zf$healthCode <- rownames(zf)
 newDF <- melt(zf, id.vars="healthCode", na.rm=TRUE, value.name = "zip3")
-newDF$zipDate <- newDF$variable
+newDF$zipDate <- as.character(newDF$variable)
 newDF$variable <- NULL
 newDF <- newDF[, c("healthCode", "zipDate", "zip3")]
 newDF <- newDF[ order(newDF$healthCode, newDF$zipDate), ]
 rownames(newDF) <- NULL
+
+## REMOVE CODES BEFORE VERSION LAUNCH DATE OF 2015-05-05
+newDF <- newDF[ newDF$zipDate >= "2015-05-05", ]
 
 ## THESE ZIP CODES NEED TO BE CONSOLIDATED
 theseZips <- c("036", "692", "878", "059", "790", "879", "063", "821", "884", "102", "823", "890", "203", "830", "893", "556", "831")
